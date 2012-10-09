@@ -1712,6 +1712,52 @@ AC_DEFUN([AC_CONFIG_AUX_DIR],
 AC_DEFUN([AC_CONFIG_AUX_DIR_DEFAULT],
 [AC_CONFIG_AUX_DIRS("$srcdir" "$srcdir/.." "$srcdir/../..")])
 
+# AC_CONFIG_AUX_DIR
+# -------------------------
+# Internal subroutine.
+# Find the latest version of config.guess and config.sub that is
+# available on the system to prevent issues with bootstrapping.
+# Allows explicitly overriding the latest one where needed.
+AC_DEFUN([AC_CONFIG_AUX_DIR,
+[
+user_config_dir=${XDG_CONFIG_HOME:-"$HOME/.config"}/autotools
+for path in \
+  "$AUTOCONF_AUX_DIR" \
+  "$user_config_dir" \
+  "$2" \
+  ; do
+    if test -x "$path/config.$1.override" ; then
+      ac_config_$1="$path/config.$1.override"
+    fi
+done
+if test -z "$ac_config_$1" ; then
+  cur_v=0
+  for path in \
+    "$AUTOCONF_AUX_DIR" \
+    "$2" \
+    "$user_config_dir" \
+    /usr/local/share/automake-* \
+    /usr/local/share/automake \
+    /usr/local/share/libtool/config \
+    /usr/share/misc \
+    /usr/share/gnuconfig \
+    /usr/share/automake-* \
+    /usr/share/automake \
+    /usr/share/libtool/config \
+    "$[CONFIG_]m4_toupper([$1])" \
+    ; do
+      if test -x "$path/config.$1" ; then
+        v=`$SHELL "$path/config.$1" --time-stamp | sed s/-//g`
+        if test "$v" -gt "$cur_v" ; then
+          cur_v="$v"
+          latest="$path"
+        fi
+      fi
+  done
+  ac_config_$1="$latest/config.$1"
+fi
+])# AC_CONFIG_AUX_DIR
+
 
 # AC_CONFIG_AUX_DIRS(DIR ...)
 # ---------------------------
@@ -1741,13 +1787,8 @@ if test -z "$ac_aux_dir"; then
   AC_MSG_ERROR([cannot find install-sh, install.sh, or shtool in $1])
 fi
 
-# These three variables are undocumented and unsupported,
-# and are intended to be withdrawn in a future Autoconf release.
-# They can cause serious problems if a builder's source tree is in a directory
-# whose full name contains unusual characters.
-ac_config_guess="$SHELL $ac_aux_dir/config.guess"  # Please don't use this var.
-ac_config_sub="$SHELL $ac_aux_dir/config.sub"  # Please don't use this var.
-ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
+AC_CONFIG_AUX_DIR([guess],[$1])
+AC_CONFIG_AUX_DIR([sub],[$1])
 
 AC_PROVIDE([AC_CONFIG_AUX_DIR_DEFAULT])dnl
 ])# AC_CONFIG_AUX_DIRS
@@ -1865,17 +1906,17 @@ m4_divert_once([HELP_CANON],
 System types:
   --build=BUILD     configure for building on BUILD [guessed]]])dnl
 # Make sure we can run config.sub.
-$SHELL "$ac_aux_dir/config.sub" sun4 >/dev/null 2>&1 ||
-  AC_MSG_ERROR([cannot run $SHELL $ac_aux_dir/config.sub])
+$SHELL "$ac_config_sub" sun4 >/dev/null 2>&1 ||
+  AC_MSG_ERROR([cannot run $SHELL $ac_config_sub])
 
 AC_CACHE_CHECK([build system type], [ac_cv_build],
 [ac_build_alias=$build_alias
 test "x$ac_build_alias" = x &&
-  ac_build_alias=`$SHELL "$ac_aux_dir/config.guess"`
+  ac_build_alias=`$SHELL "$ac_config_guess"`
 test "x$ac_build_alias" = x &&
   AC_MSG_ERROR([cannot guess build type; you must specify one])
-ac_cv_build=`$SHELL "$ac_aux_dir/config.sub" $ac_build_alias` ||
-  AC_MSG_ERROR([$SHELL $ac_aux_dir/config.sub $ac_build_alias failed])
+ac_cv_build=`$SHELL "$ac_config_sub" $ac_build_alias` ||
+  AC_MSG_ERROR([$SHELL $ac_config_sub $ac_build_alias failed])
 ])
 _AC_CANONICAL_SPLIT(build)
 ])# AC_CANONICAL_BUILD
@@ -1891,8 +1932,8 @@ AC_CACHE_CHECK([host system type], [ac_cv_host],
 [if test "x$host_alias" = x; then
   ac_cv_host=$ac_cv_build
 else
-  ac_cv_host=`$SHELL "$ac_aux_dir/config.sub" $host_alias` ||
-    AC_MSG_ERROR([$SHELL $ac_aux_dir/config.sub $host_alias failed])
+  ac_cv_host=`$SHELL "$ac_config_sub" $host_alias` ||
+    AC_MSG_ERROR([$SHELL $ac_config_sub $host_alias failed])
 fi
 ])
 _AC_CANONICAL_SPLIT([host])
@@ -1910,8 +1951,8 @@ AC_CACHE_CHECK([target system type], [ac_cv_target],
 [if test "x$target_alias" = x; then
   ac_cv_target=$ac_cv_host
 else
-  ac_cv_target=`$SHELL "$ac_aux_dir/config.sub" $target_alias` ||
-    AC_MSG_ERROR([$SHELL $ac_aux_dir/config.sub $target_alias failed])
+  ac_cv_target=`$SHELL "$ac_config_sub" $target_alias` ||
+    AC_MSG_ERROR([$SHELL $ac_config_sub $target_alias failed])
 fi
 ])
 _AC_CANONICAL_SPLIT([target])
